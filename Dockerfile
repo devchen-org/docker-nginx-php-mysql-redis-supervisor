@@ -2,6 +2,9 @@ FROM alpine:3.12
 
 LABEL maintainer="Jade <hmy940118@gmail.com>"
 
+# mirrors
+RUN set -eux && sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
+
 # php.ini
 ENV TIMEZONE            Asia/Shanghai
 ENV PHP_MEMORY_LIMIT    512M
@@ -19,19 +22,27 @@ RUN set -eux; \
 RUN apk update \
 	&& apk upgrade \
 	&& apk add nginx supervisor vim curl tzdata \
-    php7 php7-fpm php7-amqp php7-bcmath php7-ctype php7-curl php7-dom php7-fileinfo php7-ftp php7-gd php7-iconv \
+    php7 php7-fpm php7-amqp php7-bcmath php7-ctype php7-curl php7-dom php7-fileinfo php7-gd php7-iconv \
     php7-json php7-mbstring php7-mysqlnd php7-openssl php7-pdo php7-pdo_mysql php7-pdo_sqlite php7-phar php7-posix \
-    php7-redis php7-session php7-shmop php7-simplexml php7-soap php7-sockets php7-sqlite3 php7-sysvsem php7-tokenizer \
-    php7-xml php7-xmlreader php7-xmlrpc php7-xmlwriter php7-xsl php7-opcache php7-zip \
+    php7-redis php7-session php7-simplexml php7-sockets php7-sqlite3 php7-tokenizer \
+    php7-xml php7-xmlreader php7-xmlwriter php7-opcache php7-zip \
     && cp /usr/share/zoneinfo/${TIMEZONE} /etc/localtime \
 	&& echo "${TIMEZONE}" > /etc/timezone \
 	&& apk del tzdata \
  	&& rm -rf /var/cache/apk/*
 
 # https://github.com/docker-library/php/issues/240
-RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/latest-stable/community gnu-libiconv
+RUN apk add --no-cache --repository http://mirrors.ustc.edu.cn/alpine/edge/community gnu-libiconv
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 RUN rm -rf /var/cache/apk/*
+
+# install the xhprof extension to profile requests
+#RUN curl "https://github.com/tideways/php-xhprof-extension/releases/download/v5.0.4/tideways-xhprof-5.0.4-x86_64.tar.gz" -fsL -o ./tideways_xhprof.tar.gz \
+#    && tar xf ./tideways_xhprof.tar.gz \
+#    && cp ./tideways_xhprof-5.0.4/tideways_xhprof-7.3.so /usr/lib/php7/modules/tideways_xhprof.so \
+#    && chmod 755 /usr/lib/php7/modules/tideways_xhprof.so \
+#    && echo "extension=tideways_xhprof.so" >> /etc/php7/conf.d/tideways_xhprof.ini \
+#    && rm -rf ./tideways_xhprof.tar.gz ./tideways_xhprof-5.0.4 \
 
 # set environments
 RUN sed -i "s|;*date.timezone =.*|date.timezone = ${TIMEZONE}|i" /etc/php7/php.ini && \
