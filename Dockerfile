@@ -1,6 +1,6 @@
 FROM alpine:3.12
 
-LABEL maintainer="Jade <hmy940118@gmail.com>"
+LABEL maintainer="DevChen <devchen.org@outlook.com>"
 
 # mirrors
 RUN set -eux && sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
@@ -21,11 +21,11 @@ RUN set -eux; \
 # install service
 RUN apk update \
 	&& apk upgrade \
-	&& apk add nginx supervisor vim curl tzdata \
+	&& apk add nginx redis mysql supervisor vim curl tzdata \
     php7 php7-fpm php7-amqp php7-bcmath php7-ctype php7-curl php7-dom php7-fileinfo php7-gd php7-iconv \
     php7-json php7-mbstring php7-mysqlnd php7-openssl php7-pdo php7-pdo_mysql php7-pdo_sqlite php7-phar php7-posix \
     php7-redis php7-session php7-simplexml php7-sockets php7-sqlite3 php7-tokenizer \
-    php7-xml php7-xmlreader php7-xmlwriter php7-opcache php7-zip \
+    php7-xml php7-xmlreader php7-xmlwriter php7-opcache php7-zip php7-apcu \
     && cp /usr/share/zoneinfo/${TIMEZONE} /etc/localtime \
 	&& echo "${TIMEZONE}" > /etc/timezone \
 	&& apk del tzdata \
@@ -34,7 +34,7 @@ RUN apk update \
 # https://github.com/docker-library/php/issues/240
 RUN apk add --no-cache --repository http://mirrors.ustc.edu.cn/alpine/edge/community gnu-libiconv
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
-RUN rm -rf /var/cache/apk/*
+RUN rm -rf /var/cache/apk/* && mkdir -p /etc/redis
 
 # install the xhprof extension to profile requests
 #RUN curl "https://github.com/tideways/php-xhprof-extension/releases/download/v5.0.4/tideways-xhprof-5.0.4-x86_64.tar.gz" -fsL -o ./tideways_xhprof.tar.gz \
@@ -56,6 +56,9 @@ RUN sed -i "s|;*date.timezone =.*|date.timezone = ${TIMEZONE}|i" /etc/php7/php.i
 COPY config/supervisord.conf /etc/supervisord.conf
 COPY config/nginx.conf /etc/nginx/nginx.conf
 COPY config/www.conf /etc/php7/php-fpm.d/www.conf
+COPY config/redis_6379.conf /etc/redis/redis_6379.conf
+
+COPY ./start.sh /opt/start.sh
 
 # composer
 RUN curl -sS https://getcomposer.org/installer | \
@@ -69,11 +72,13 @@ RUN mkdir -p /webser/data \
     && mkdir -p /webser/logs/php \
     && mkdir -p /webser/runtime \
     && mkdir -p /webser/www \
-    && chown -R www-data:www-data /webser
+    && mkdir -p /data \
+    && chown -R www-data:www-data /webser \
+    && chmod +x /opt/start.sh
 
 EXPOSE 80 443
 
 # workdir
 WORKDIR /webser/www
 
-ENTRYPOINT ["/usr/bin/supervisord", "-nc", "/etc/supervisord.conf"]
+ENTRYPOINT ["sh","-c","/opt/start.sh"]

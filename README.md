@@ -1,1 +1,1 @@
-# docker-nginx-php-supervisor
+# docker-nginx-php-redis-supervisor
